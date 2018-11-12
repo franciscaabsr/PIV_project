@@ -1,34 +1,38 @@
 clear all
 close all 
 
-d1 = dir ('.\Cam1\*.png'); %lists the files in directory .png (all the images)
-dd1 = dir('.\Cam1\*.mat'); %lists the files in directory .mat (all the depth images)
-d2 =  dir ('.\Cam2\*.png'); %lists the files in directory .png (all the images)
-dd2 = dir('.\Cam1\*.mat'); %lists the files in directory .mat (all the depth images)
-load ('.\CalibData\cameraparametersAsus.mat');
+%Prepare parameters and access to functions
+load ('./CalibData/cameraparametersAsus.mat');
+addpath('natsortfiles/');
+
+r1 = dir ('.\Cam1\*.png'); %lists the files in directory .png (all the images)
+d1 = dir('.\Cam1\*.mat'); %lists the files in directory .mat (all the depth images)
+r2 =  dir ('.\Cam2\*.png'); %lists the files in directory .png (all the images)
+d2 = dir('.\Cam1\*.mat'); %lists the files in directory .mat (all the depth images)
+
 imgs = [];
 
-
-for i = 1: length (d1)
+%computation of rgbd (rgb image expressed in depth reference frame)
+for i = 1: length (d1) %for each image in time
     im = imread(d1(i).name);
     load(dd1(i).name);
     imgs = cat(3,imgs,im); 
-    imgsd(:,:,i) = double(depth_array)/1000; 
-    [r,c] = ind2sub(size(imgsd(:,:,i)),find(imgsd(:,:,i)));
-    im_vec = reshape(imgsd(:,:,i),[480*640,1]);
-    xyz_depth = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0);
-    rgbd = get_rgbd(xyz_depth, im, cam_params.R, cam_params.T, cam_params.Krgb);1
+    imgsd(:,:,i) = double(depth_array)/1000; %store all depth_array
+    [r,c] = ind2sub(size(imgsd(:,:,i)),find(imgsd(:,:,i))); %select (i,j) that correspond to entries non zero
+    im_vec = reshape(imgsd(:,:,i),[480*640,1]); %vectorize
+    xyz_depth = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0); %compute xyz in depth reference frame
+    rgbd = get_rgbd(xyz_depth, im, cam_params.R, cam_params.T, cam_params.Krgb); %compute rgb corresponding to xyz_depth
 end
 
-
-for i = 1: length (d1)
-    im = imread(d1(i).name);
-    load(dd1(i).name);
+%computation of rgbd (rgb image expressed in depth reference frame)
+for i = 1: length (d2) %for each image in time
+    im = imread(d2(i).name);
+    load(dd2(i).name);
     imgs = cat(3,imgs,im); 
-    imgsd(:,:,i) = double(depth_array)/1000; 
-    [r,c] = ind2sub(size(imgsd(:,:,i)),find(imgsd(:,:,i)));
-    im_vec = reshape(imgsd(:,:,i),[480*640,1]);
-    xyz_depth = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0);
-    rgbd = get_rgbd(xyz_depth, im, cam_params.R, cam_params.T, cam_params.Krgb);1
+    imgsd(:,:,i) = double(depth_array)/1000; %store all depth_array
+    [r,c] = ind2sub(size(imgsd(:,:,i)),find(imgsd(:,:,i))); %select (i,j) that correspond to entries non zero
+    im_vec = reshape(imgsd(:,:,i),[480*640,1]); %vectorize
+    xyz_depth = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0); %compute xyz in depth reference frame
+    rgbd = get_rgbd(xyz_depth, im, cam_params.R, cam_params.T, cam_params.Krgb); %compute rgb corresponding to xyz_depth
 end
 

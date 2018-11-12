@@ -1,24 +1,20 @@
 clear all
 close all 
 
-%Prepare parameters and access to functions
+%Prepare 
 load ('./CalibData/cameraparametersAsus.mat');
-addpath('natsortfiles/');
 
-%Put all data in respective directory
-r = dir ('./Cam1/*.png'); %lists the files in directory .jpg or .png (all the rgb images)
-d = dir('./Cam1/*.mat'); %lists the files in directory .mat (all the depth images)
+d = dir ('./Cam1/*.png'); %lists the files in directory .jpg or .png (all the rgb images)
+dd = dir('./Cam1/*.mat'); %lists the files in directory .mat (all the depth images)
 imgs = [];
 
-%sort in alphanumeric order
-r_sorted = natsortfiles({r.name})';
-d_sorted = natsortfiles({d.name})';
+%need to sort images!!
+assert(iscell(d),'First input <X> must be a cell array.')
 
-%computation of rgbd (rgb image expressed in depth reference frame)
-for i = 1: length (r) %for each image in time
-    im = imread(r_sorted(i).name);
+for i = 1: length (d) %for each image in time
+    im = imread(d(i).name);
     imgs = cat(3,imgs,im); 
-    load(d_sorted(i).name);
+    load(dd(i).name);
     imgsd(:,:,i) = double(depth_array)/1000; %store all depth_array
     [r,c] = ind2sub(size(imgsd(:,:,i)),find(imgsd(:,:,i))); %select (i,j) that correspond to entries non zero
     im_vec = reshape(imgsd(:,:,i),[480*640,1]); %vectorize
