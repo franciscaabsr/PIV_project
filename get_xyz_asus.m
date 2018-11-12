@@ -9,6 +9,7 @@ persistent im_size;
 persistent xyz;
 persistent z;
 
+%intrinsic paramenters
 Kx = K(1,1);
 Cx = K(1,3);
 Ky = K(2,2);
@@ -22,7 +23,7 @@ if isempty(im_size)
     u = u(:)-Cx; %subtract for each entry of matrix; u is in the principal point ref frame
     v = repmat((1:im_size(1)'),im_size(2),1); %1 to 480 vector' for all 640 rows
     v=v(:)-Cy; 
-    xyz=zeros(length(u),3);
+    xyz=zeros(length(u),3); 
 end
 
 % tmp = im(:);

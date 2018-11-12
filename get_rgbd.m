@@ -1,17 +1,21 @@
 function rgbd = get_rgbd(xyz, rgb, R, T, Krgb)
 
+%intrinsic parameters
 Kx = Krgb(1,1);
 Cx = Krgb(1,3);
 Ky = Krgb(2,2);
 Cy = Krgb(2,3);
 
+%apply rotation
 xyz_rgb = R * xyz';
+%apply translation
 xyz_rgb = [xyz_rgb(1,:) + T(1); xyz_rgb(2,:) + T(2); xyz_rgb(3,:) + T(3)];
 
 x = xyz_rgb(1,:);
 y = xyz_rgb(2,:);
 z = xyz_rgb(3,:);
 
+%conversion to image plane coordinates in rgb
 u = round(Kx * x./z + Cx);
 v = round(Ky * y./z + Cy);
 
