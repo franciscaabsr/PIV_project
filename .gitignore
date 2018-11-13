@@ -1,2 +1,4 @@
-Cam1/
-Cam2/
+depth1_*
+depth2_*
+rgb_image1_*
+rgb_image2_*
