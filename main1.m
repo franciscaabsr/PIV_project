@@ -22,7 +22,7 @@ for i = 1: length (r) %for each image in time
     im = imread(char(r_sorted(i)));
     imgs = cat(3,imgs,im); 
     load(char(d_sorted(i)));
-    imgsd(:,:,i) = double(depth_array)/1000; %store all depth_array
+    imgsd(:,:,i) = double(depth_array); %store all depth_array in mm
     [r,c] = ind2sub(size(imgsd(:,:,i)),find(imgsd(:,:,i))); %select (i,j) that correspond to entries non zero
     im_vec = reshape(imgsd(:,:,i),[480*640,1]); %vectorize
     xyz_depth(:,:,i) = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0); %compute xyz in depth reference frame
