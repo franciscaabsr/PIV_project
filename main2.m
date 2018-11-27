@@ -63,6 +63,8 @@ im2=imread('rgb_image2_1.png');
 
 figure(1);
 imagesc(im1);hold on;plot(f1(1,:),f1(2,:),'*');hold off;
+figure(2);
+imagesc(im2);hold on;plot(f2(1,:),f2(2,:),'*');hold off;
 
 [matches, scores] = vl_ubcmatch(d1, d2) ;
 %matches sao os indices do keypoints que deram match
@@ -70,12 +72,20 @@ imagesc(im1);hold on;plot(f1(1,:),f1(2,:),'*');hold off;
 %indice de f1 e f2
 %a primeira linha de f1_t corresponde a x e a segunda corresponde a y na
 %img original
+figure(3); clf;
+imagesc(cat(2,im1,im2));
 
 %obtain the coordinates (u,v) for the matches in the original pair of rgb
 u1_m = f1(1,matches(1,:));
 v1_m = f1(2,matches(1,:));
 u2_m = f2(1,matches(2,:));
 v2_m = f2(2,matches(2,:));
+
+u2_m_plot = f2(1,matches(2,:))+size(im1,2);
+
+hold on;
+h = line([u1_m; u2_m_plot],[v1_m;v2_m]);
+set(h, 'linewidth', 1, 'color', 'b');
 
 % we want to find depth_pixel corresponding to these (u,v) from the match
 % in the rgb
@@ -94,5 +104,10 @@ depth_index_2 = [];
 for i=1:size(u1_m,2)
     [val_1(i), depth_index_1(i)] = min(abs(u1-u1_m(i))+abs(v1-v1_m(i)));
     [val_2(i), depth_index_2(i)] = min(abs(u2-u2_m(i))+abs(v2-v2_m(i)));
-
 end
+
+%create vector of z values for 45 depth_index of each camera
+%compute xyz values for each camera
+%determine centroid of each pointcloud to subtract it
+
+%apply rigid motion xyz = R* xyz + T -> RANSAC 
