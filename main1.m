@@ -26,6 +26,11 @@ for i = 1: length (r) %for each image in time
     [r,c] = ind2sub(size(imgsd(:,:,i)),find(imgsd(:,:,i))); %select (i,j) that correspond to entries non zero
     im_vec = reshape(imgsd(:,:,i),[480*640,1]); %vectorize
     xyz_depth(:,:,i) = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0); %compute xyz in depth reference frame
-    rgbd(:,:,i:i+2) = get_rgbd(xyz_depth(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb); %compute rgb corresponding to xyz_depth
+    [rgbd(:,:,i:i+2), u1_temp, v1_temp, xyz_rgb_1_temp] = get_rgbd(xyz_depth(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb); %compute rgb corresponding to xyz_depth
+    if i == 1 %only the values for the first image are required
+        u1 = u1_temp;
+        v1 = v1_temp;
+        xyz_rgb_1 = xyz_rgb_1_temp;
+    end
 end
 

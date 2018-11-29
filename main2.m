@@ -31,7 +31,12 @@ for i = 1: length (r1) %for each image in time
     [r,c] = ind2sub(size(imgsd_1(:,:,i)),find(imgsd_1(:,:,i))); %select (i,j) that correspond to entries non zero
     im_vec = reshape(imgsd_1(:,:,i),[480*640,1]); %vectorize
     xyz_depth_1(:,:,i) = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0); %compute xyz in depth reference frame
-    [rgbd_1(:,:,i:i+2),u1, v1, xyz_rgb_1] = get_rgbd(xyz_depth_1(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb); %compute rgb corresponding to xyz_depth
+    [rgbd_1(:,:,i:i+2),u1_temp, v1_temp, xyz_rgb_1_temp] = get_rgbd(xyz_depth_1(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb); %compute rgb corresponding to xyz_depth
+    if i == 1 %only the values for the first image are required
+        u1 = u1_temp;
+        v1 = v1_temp;
+        xyz_rgb_1 = xyz_rgb_1_temp;
+    end
 end
 
 imgs_2 = [];
@@ -48,7 +53,12 @@ for i = 1: length (r2) %for each image in time
     [r,c] = ind2sub(size(imgsd_2(:,:,i)),find(imgsd_2(:,:,i))); %select (i,j) that correspond to entries non zero
     im_vec = reshape(imgsd_2(:,:,i),[480*640,1]); %vectorize
     xyz_depth_2(:,:,i) = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0); %compute xyz in depth reference frame
-    [rgbd_2(:,:,i:i+2),u2,v2,xyz_rgb_2] = get_rgbd(xyz_depth_2(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb); %compute rgb corresponding to xyz_depth
+    [rgbd_2(:,:,i:i+2),u2_temp,v2_temp,xyz_rgb_2_temp] = get_rgbd(xyz_depth_2(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb); %compute rgb corresponding to xyz_depth
+    if i == 1 %only the values for the first image are required
+        u2 = u2_temp;
+        v2 = v2_temp;
+        xyz_rgb_2 = xyz_rgb_2_temp;
+    end
 end
 
 %computation of keypoints and its descriptors for first frame (in time)
@@ -95,19 +105,77 @@ set(h, 'linewidth', 1, 'color', 'b');
 %check correspondence u1_m with u1 and correspondence v1_m with v1, find
 %best for both (min of sum((u1_m-u1)+(v1_m-v1))) -> this entry will
 %correspond to the pixel of the depth image
-
-val_1 = [];
-val_2 = [];
-depth_index_1 = [];
-depth_index_2 = [];
+number_of_matches = size(u1_m,2)
+val_1 = zeros(1,number_of_matches);
+val_2 = zeros(1,number_of_matches);
+depth_index_1 = zeros(1,number_of_matches);
+depth_index_2 = zeros(1,number_of_matches);
+xyz_matches_1 = zeros(3,number_of_matches);
+xyz_matches_2 = zeros(3,number_of_matches);
 
 for i=1:size(u1_m,2)
     [val_1(i), depth_index_1(i)] = min(abs(u1-u1_m(i))+abs(v1-v1_m(i)));
     [val_2(i), depth_index_2(i)] = min(abs(u2-u2_m(i))+abs(v2-v2_m(i)));
+    
+    %compute xyz values for depth camera of each kinect that correspond to
+    %the points matched in the rgb images
+    xyz_matches_1(:,i) = [xyz_depth_1(depth_index_1(i),1,1) ; xyz_depth_1(depth_index_1(i),2,1) ; xyz_depth_1(depth_index_1(i),3,1)];
+    xyz_matches_2(:,i) = [xyz_depth_2(depth_index_2(i),1,1) ; xyz_depth_2(depth_index_2(i),2,1) ; xyz_depth_2(depth_index_2(i),3,1)];
 end
 
-%create vector of z values for 45 depth_index of each camera
-%compute xyz values for each camera
-%determine centroid of each pointcloud to subtract it
+%use xyz_depth because rotation is the same between depth cameras ou rgb
+%cameras ???????????????????????????????????????????????????????????????
 
-%apply rigid motion xyz = R* xyz + T -> RANSAC 
+%RANSAC TIME!!!
+threshold = 0.5;
+number_it = 100;
+
+max_numinliers = 0;
+inds_classification = zeros(1,number_of_matches);
+
+for i=1:number_it
+    %select 4 pairs of values
+    index_sample = randsample((1:number_of_matches), 4);
+    
+    %compute centroid for 4 pairs
+    cent1=mean(xyz_matches_1(:,index_sample)')';
+    cent2=mean(xyz_matches_2(:,index_sample)')';
+    
+    xyz_1=xyz_matches_1(:,index_sample)-repmat(cent1,1,4);
+    xyz_2=xyz_matches_2(:,index_sample)-repmat(cent2,1,4);
+    
+    %apply SVD to determine rotation matrix from 2 to 1 considering kinect_1 as the world
+    [u s v]=svd(xyz_2*xyz_1');
+    R_12 = u*v'; %rotation matrix
+    T_12 = cent2-R_12*cent1; %translation
+    %model fitted for these 4 pairs of xyz
+    
+    %find inliers and outliers
+    inds = zeros(1,number_of_matches);
+    for j=1:number_of_matches
+        error = norm(xyz_matches_2(:,j)-(R_12*xyz_matches_1(:,j) + T_12));
+        inds(j) = error<threshold; % 1 corresponds to inlier and 0 corresponds to outlier
+        %to store index of inliers
+    end
+    if length(find(inds))> max_numinliers
+        max_numinliers = length(find(inds));
+        inds_classification = inds; %1 corresponds to inlier and 0 corresponds to outlier 
+    end
+end 
+
+inds_inliers = find(inds_classification);
+
+%determine centroid of each pointcloud to subtract it
+cent1=mean(xyz_matches_1(:,inds_inliers)')';
+cent2=mean(xyz_matches_2(:,inds_inliers)')';
+xyz_1=xyz_matches_1(:,inds_inliers)-repmat(cent1,1,max_numinliers);
+xyz_2=xyz_matches_2(:,inds_inliers)-repmat(cent2,1,max_numinliers);
+
+%apply SVD to determine rotation matrix from 2 to 1 considering kinect_1 as the world
+[u s v]=svd(xyz_2*xyz_1');
+R_final_12 = u*v'; %rotation matrix
+T_final_12 = cent2-R_final_12*cent1; %translation
+
+verify = R_final_12'*R_final_12; %if it is identity matrix
+
+%create test_function for ransac!!
