@@ -166,6 +166,7 @@ end
 inds_inliers = find(inds_classification);
 
 %determine centroid of each pointcloud to subtract it
+imagesc(xyz_matches_1(:,inds_inliers));
 cent1=mean(xyz_matches_1(:,inds_inliers)')';
 cent2=mean(xyz_matches_2(:,inds_inliers)')';
 xyz_1=xyz_matches_1(:,inds_inliers)-repmat(cent1,1,max_numinliers);
@@ -179,3 +180,4 @@ T_final_12 = cent2-R_final_12*cent1; %translation
 verify = R_final_12'*R_final_12; %if it is identity matrix
 
 %create test_function for ransac!!
+% print inliers and its matches!!!!
