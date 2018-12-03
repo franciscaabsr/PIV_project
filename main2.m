@@ -76,7 +76,7 @@ imagesc(im1);hold on;plot(f1(1,:),f1(2,:),'*');hold off;
 figure(2);
 imagesc(im2);hold on;plot(f2(1,:),f2(2,:),'*');hold off;
 
-[matches, scores] = vl_ubcmatch(d1, d2) ;
+[matches, scores] = vl_ubcmatch(d1, d2, 2) ;
 %matches sao os indices do keypoints que deram match
 %o indice e a coluna na matriz de descriptors d1_t e d2_t que e igual ao
 %indice de f1 e f2

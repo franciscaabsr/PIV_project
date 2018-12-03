@@ -34,3 +34,52 @@ for i = 1: length (r) %for each image in time
     end
 end
 
+%% Estimate the background
+
+%compute median of every pixel in terms of time (third dimension in list of matrices)
+bgdepth = median(imgsd,3);
+
+%% Background subtraction for depth (try with gray too)
+hold all
+
+for i=1:length(d);
+    
+    imdiff=abs(imgsd(:,:,i)-bgdepth)>.50; 
+    %subtracting the background to the image in order to obtain moving
+    %objects
+    %if difference is bigger than .20, then it s true and gives value
+    %1(white), as not part of background. if not, false and gives value
+    %0(black), as part of background
+    
+    % with each image obtained, we can see that these images have white contours that are actually background 
+    % so we can "clean" these, considering the neighbourhood of each pixel
+    imgdiffiltered=imopen(imdiff,strel('disk',5));
+    
+    %opens imdiff with structuring element strel('disk',5): 2D disk with radius 5 pixels
+    %N=4 (default), meaning that the disk is approximated by a sequence of 4 periodic-line structuring elements
+    %removes white elements (1) with radius less then 5 pixels (verifies if
+    %neighbours are classified as background or not)
+    %if in a disk of radius=5 we have one black element (background) then
+    %that pixel with that neighbour will also be classified as blackground
+    %this means "opening" the image with the disk, working like a filter
+    %for classification
+    
+    %open filter - clean image (erosion) from everything smaller than 
+    %disk and then do the dilation to recover the original shape except the small stuff I took away
+    
+    %we will only have big connected components, that will be our moving
+    %objects that we wish to detect
+  
+    figure(1);
+    imagesc([imdiff imgdiffiltered]); 
+    title('Difference image and morph filtered');
+    colormap(gray); %define colour map to know the scale in terms of black and white
+    figure(2);
+    imagesc([imgsd(:,:,i) bgdepth]);
+    title('Depth image i and background image');
+    figure(3);
+    imagesc(bwlabel(imgdiffiltered)); %obtain the same image now labeled with connected components 
+    %(possible moving objects); value zero is the background
+    title('Connected components');
+    pause(1);
+end
