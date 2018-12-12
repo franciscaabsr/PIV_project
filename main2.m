@@ -32,7 +32,7 @@ for i = 1: length (r1) %for each image in time
     im_vec = reshape(imgsd_1(:,:,i),[480*640,1]); %vectorize
     xyz_depth_1(:,:,i) = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0); %compute xyz in depth reference frame
     [rgbd_1(:,:,i:i+2),u1_temp, v1_temp, xyz_rgb_1_temp] = get_rgbd(xyz_depth_1(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb); %compute rgb corresponding to xyz_depth
-    if i == 1 %only the values for the first image are required
+    if i == 1 %only the values for the first image are required to find features
         u1 = u1_temp;
         v1 = v1_temp;
         xyz_rgb_1 = xyz_rgb_1_temp;
@@ -127,11 +127,10 @@ end
 %cameras ???????????????????????????????????????????????????????????????
 
 %RANSAC TIME!!!
-threshold = 0.5;
+%vary threshold to see if results are improved!!
 number_it = 100;
 
-max_numinliers = 0;
-inds_classification = zeros(1,number_of_matches);
+max_inliers = [];
 
 for i=1:number_it
     %select 4 pairs of values
@@ -151,26 +150,18 @@ for i=1:number_it
     %model fitted for these 4 pairs of xyz
     
     %find inliers and outliers
-    inds = zeros(1,number_of_matches);
-    for j=1:number_of_matches
-        error = norm(xyz_matches_2(:,j)-(R_12*xyz_matches_1(:,j) + T_12));
-        inds(j) = error<threshold; % 1 corresponds to inlier and 0 corresponds to outlier
-        %to store index of inliers
-    end
-    if length(find(inds))> max_numinliers
-        max_numinliers = length(find(inds));
-        inds_classification = inds; %1 corresponds to inlier and 0 corresponds to outlier 
+    error = (xyz_matches_2 - (R_12*xyz_matches_1 + repmat(T_12,1,size(xyz_matches_1,2))));
+    inliers = sum(error.*error)<(0.5^2) ; %1 corresponds to inlier and 0 corresponds to outlier
+    if sum(inliers) > size(max_inliers)
+        max_inliers = find(inliers);
     end
 end 
 
-inds_inliers = find(inds_classification);
-
 %determine centroid of each pointcloud to subtract it
-imagesc(xyz_matches_1(:,inds_inliers));
-cent1=mean(xyz_matches_1(:,inds_inliers)')';
-cent2=mean(xyz_matches_2(:,inds_inliers)')';
-xyz_1=xyz_matches_1(:,inds_inliers)-repmat(cent1,1,max_numinliers);
-xyz_2=xyz_matches_2(:,inds_inliers)-repmat(cent2,1,max_numinliers);
+cent1=mean(xyz_matches_1(:,max_inliers)')';
+cent2=mean(xyz_matches_2(:,max_inliers)')';
+xyz_1=xyz_matches_1(:,max_inliers)-repmat(cent1,[1,size(max_inliers,2)]);
+xyz_2=xyz_matches_2(:,max_inliers)-repmat(cent2,[1,size(max_inliers,2)]);
 
 %apply SVD to determine rotation matrix from 2 to 1 considering kinect_1 as the world
 [u s v]=svd(xyz_2*xyz_1');
@@ -179,5 +170,4 @@ T_final_12 = cent2-R_final_12*cent1; %translation
 
 verify = R_final_12'*R_final_12; %if it is identity matrix
 
-%create test_function for ransac!!
 % print inliers and its matches!!!!
