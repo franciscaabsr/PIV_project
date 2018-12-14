@@ -123,51 +123,24 @@ for i=1:size(u1_m,2)
     xyz_matches_2(:,i) = [xyz_depth_2(depth_index_2(i),1,1) ; xyz_depth_2(depth_index_2(i),2,1) ; xyz_depth_2(depth_index_2(i),3,1)];
 end
 
-%use xyz_depth because rotation is the same between depth cameras ou rgb
-%cameras ???????????????????????????????????????????????????????????????
-
 %RANSAC TIME!!!
-%vary threshold to see if results are improved!!
-number_it = 100;
-
-max_inliers = [];
-
-for i=1:number_it
-    %select 4 pairs of values
-    index_sample = randsample((1:number_of_matches), 4);
-    
-    %compute centroid for 4 pairs
-    cent1=mean(xyz_matches_1(:,index_sample)')';
-    cent2=mean(xyz_matches_2(:,index_sample)')';
-    
-    xyz_1=xyz_matches_1(:,index_sample)-repmat(cent1,1,4);
-    xyz_2=xyz_matches_2(:,index_sample)-repmat(cent2,1,4);
-    
-    %apply SVD to determine rotation matrix from 2 to 1 considering kinect_1 as the world
-    [u s v]=svd(xyz_2*xyz_1');
-    R_12 = u*v'; %rotation matrix
-    T_12 = cent2-R_12*cent1; %translation
-    %model fitted for these 4 pairs of xyz
-    
-    %find inliers and outliers
-    error = (xyz_matches_2 - (R_12*xyz_matches_1 + repmat(T_12,1,size(xyz_matches_1,2))));
-    inliers = sum(error.*error)<(0.5^2) ; %1 corresponds to inlier and 0 corresponds to outlier
-    if sum(inliers) > size(max_inliers)
-        max_inliers = find(inliers);
-    end
-end 
-
-%determine centroid of each pointcloud to subtract it
-cent1=mean(xyz_matches_1(:,max_inliers)')';
-cent2=mean(xyz_matches_2(:,max_inliers)')';
-xyz_1=xyz_matches_1(:,max_inliers)-repmat(cent1,[1,size(max_inliers,2)]);
-xyz_2=xyz_matches_2(:,max_inliers)-repmat(cent2,[1,size(max_inliers,2)]);
-
-%apply SVD to determine rotation matrix from 2 to 1 considering kinect_1 as the world
-[u s v]=svd(xyz_2*xyz_1');
-R_final_12 = u*v'; %rotation matrix
-T_final_12 = cent2-R_final_12*cent1; %translation
+%vary threshold to see if results are improved!! 100 iterations
+[R_final_12, T_final_12, max_inliers] = ransac(xyz_matches_1, xyz_matches_2);
 
 verify = R_final_12'*R_final_12; %if it is identity matrix
+det = det(R_final_12);
 
-% print inliers and its matches!!!!
+% plot inliers and its matches over the two images
+
+figure(4); clf;
+imagesc(cat(2,im1,im2));
+
+%to select only the inliers
+u1_m_in = u1_m(:,max_inliers);
+v1_m_in = v1_m(:, max_inliers);
+u2_m_in = u2_m_plot(:, max_inliers);
+v2_m_in = v2_m(:, max_inliers);
+
+hold on;
+h = line([u1_m_in; u2_m_in],[v1_m_in;v2_m_in]);
+set(h, 'linewidth', 1, 'color', 'b');
