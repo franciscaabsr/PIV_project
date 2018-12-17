@@ -48,7 +48,7 @@ num_components = [];
 
 for i=1:length(d)
     
-    imdiff=abs(imgsd(:,:,i)-bgdepth)>.50; 
+    imdiff=abs(imgsd(:,:,i)-bgdepth)>50; 
     %subtracting the background to the image in order to obtain moving
     %objects: 1 foreground, 0 background
     
@@ -58,14 +58,41 @@ for i=1:length(d)
     %ignore objects with less than 1000 pixels
     imdiff = bwareaopen(imdiff,1000);
     imgdiffiltered= cat(3, imgdiffiltered, imdiff);
+
     
     %store for each image: matrix with labels and number of components
     [im_label(:,:,i), num_components(i)] = bwlabel(imgdiffiltered(:,:,i));
     
-    %remove pixels with z = 0 from every object
-    mask = reshape((abs(xyz_depth(:,3,i)) ~= 0),480,640); %1 the oneswith z~=0 and 0 the ones with z=0
-    im_label(:,:,i) = im_label(:,:,i).*mask;  
-    %0 in the ones who are not objects and the labels in the objects
+    
+    %remove outliers in relation to values of z
+    for j = 1 : num_components(i)
+         comp_indx = find(im_label(:,:,i)==j);         
+         comp_points = (xyz_depth(comp_indx,3,i));
+         
+         error_indx = find(comp_points == 0); % get indexes from depth cam errors
+         if length(error_indx) > length(comp_indx)*.5 %if the object is more than 50% erros, delete obj
+             error_indx = 1:length(comp_indx);
+         end
+         
+         avg_point = median(nonzeros(comp_points));
+         other_indx = find(abs(comp_points-avg_point) > 1);
+         other_indx = union(other_indx, error_indx);
+         if other_indx
+             num_removed(i,j) = length(other_indx);
+             others_indx = comp_indx(other_indx);
+             filterd_im = reshape(im_label(:,:,i), 480*640, 1);
+             filterd_im(others_indx) = 0;
+             filterd_im = reshape(filterd_im, 480,640);
+             im_label(:,:,i) = filterd_im;
+         end
+         
+    end
+    
+    im_label(:,:,i) = bwareaopen(im_label(:,:,i),1000);
+    
+    %store for each image: matrix with labels and number of components
+    [im_label(:,:,i), num_components(i)] = bwlabel(im_label(:,:,i));
+
     
     figure(1);
     imagesc(im_label(:,:,i));
@@ -98,30 +125,6 @@ for i =  1 : length(d)
        end
     end
     
-    %CREATE BOX AND SHOW TODO!!
-    %box(:,j,i)
-    %for j = 1 : num_components(i)
-     %   box = reshape(box(:,j,i), 3, 8);
-      %  X = cat(2, box(1,1), box(1,5)); % xmin xmax
-       % Y = cat(2, box(2,:), box(2,1)); % ymin ymax
-        %Z = cat(2, box(3,:), box(3,1)); % zmin zmax
-        %to plot 3D line in each dimension, to create the box in the image
-        %figure(2);
-        %im = imread(char(r_sorted(i)));
-        %imagesc(im);
-        %hold on;
-        %plot(plot::Box(box(:,1), box(:,8),Filled = FALSE));
-        %plot3(X,Y,Z);
-        %hold off;
-%     X = box(1:3:end-2,1,i);
-%     Y = box(2:3:end-1,1,i);
-%     Z = box(3:3:end,1,i);
-%     C = [0 0 0 0 0 0 0 0];
-%     figure(2)
-%     pcshow(xyz_depth(:,:,i)); hold on
-%     fill3(X,Y,Z,C); hold off
-   % end
-    %hold off;
 end
 
 %to store sequence of components along the images, with components of first
@@ -159,11 +162,15 @@ for i = 1 : length(d)-1
     
     [assign, cost] = munkres(costmat); % hungarian method to determine the assignment
 
-    for index = 1 : length(assign)
-        indextrack = find(track(:,i)==index);
-        track(indextrack,j) = assign(index);
-    end 
- 
+    if ~isempty(assign)
+        for index = 1 : length(assign)
+            indextrack = find(track(:,i)==index);
+            track(indextrack,j) = assign(index);
+        end
+    else
+        track =  cat(2,track,zeros(size(track,1),1));
+    end
+    
     %verify
     if length(assign) < num_components(j)
         new = setdiff(1:num_components(j),assign);
@@ -184,5 +191,18 @@ for j = 1 : size(track,1)
             objects(j).Y(:,i)=zeros(8,1);
             objects(j).Z(:,i)=zeros(8,1);
         end
+    end
+end
+
+%plot the boxes 
+for j = 1 : size(track,1)
+    for i = 1 : length(objects(j).framestracked)
+        frame = objects(j).framestracked(i);
+        figure(2)
+        pcshow(xyz_depth(:,:,frame),'VerticalAxis','Z');
+        hold on 
+        plot3(objects(j).X(:,frame) , objects(j).Y(:,frame) , objects(j).Z(:,frame) , 'r*');
+        axis([min(xyz_depth(:,1,frame)) max(xyz_depth(:,1,frame)) min(xyz_depth(:,2,frame)) max(xyz_depth(:,2,frame)) min(xyz_depth(:,3,frame)) max(xyz_depth(:,3,frame))])
+        hold off
     end
 end

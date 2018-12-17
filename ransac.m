@@ -14,13 +14,13 @@ max_inliers = [];
         xyz_2=xyz2(:,index_sample)-repmat(cent2,1,4);
 
         %apply SVD to determine rotation matrix from 2 to 1 considering kinect_1 as the world
-        [u s v]=svd(xyz_2*xyz_1');
-        R_12 = u*v'; %rotation matrix
-        T_12 = cent2 - R_12*cent1; %translation
+        [u s v]=svd(xyz_1*xyz_2');
+        R_21 = u*v'; %rotation matrix
+        T_21 = cent1 - R_21*cent2; %translation
         %model fitted for these 4 pairs of xyz
 
         %find inliers and outliers
-        error = (xyz2 - (R_12*xyz1 + repmat(T_12,1,size(xyz1,2))));
+        error = (xyz1 - (R_21*xyz2 + repmat(T_21,1,size(xyz2,2))));
         inliers = sum(error.*error)<(0.5^2) ; %1 corresponds to inlier and 0 corresponds to outlier
         if sum(inliers) > size(max_inliers)
             max_inliers = find(inliers);
@@ -38,8 +38,8 @@ xyz_1=xyz1(:,max_inliers)-repmat(cent1,[1,size(max_inliers,2)]);
 xyz_2=xyz2(:,max_inliers)-repmat(cent2,[1,size(max_inliers,2)]);
 
 %apply SVD to determine rotation matrix from 2 to 1 considering kinect_1 as the world
-[u s v]=svd(xyz_2*xyz_1');
+[u s v]=svd(xyz_1*xyz_2');
 R_final = u*v'; %rotation matrix
-T_final = cent2-R_final*cent1; %translation
+T_final = cent1-R_final*cent2; %translation
 
 end

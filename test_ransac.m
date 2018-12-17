@@ -3,7 +3,7 @@
 clear all
 
 %generate randomly xyz for 200 points, with values between 0 and 1
-xyz1 = rand(3,200);
+xyz2 = rand(3,200);
 
 %generate random matrix 3x3, to apply SVD and obtain random R
 [u s v] = svd(rand(3,3));
@@ -12,8 +12,8 @@ R = u*v'; %rotation matrix
 %generate random translation
 T = rand(3,1);
 
-%compute xyz' using rigid motion: xyz' = R*xyz + T
-xyz2 = R*xyz1 + T;
+%compute xyz' using rigid motion: xyz_w = R*xyz_c + T
+xyz1 = R*xyz2 + T;
 
 %% First test ransac without outliers and noise
 

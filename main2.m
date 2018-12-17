@@ -64,8 +64,8 @@ end
 %computation of keypoints and its descriptors for first frame (in time)
 
 %fazer sift na img original
-im1=imread('rgb_image1_1.png');
-im2=imread('rgb_image2_1.png');
+im1=imread('rgb_image1_0001.png');
+im2=imread('rgb_image2_0001.png');
 
 %images are needed to be in grayscale and in single precision
 [f1,d1] = vl_sift(single(rgb2gray(im1))) ; %images are needed to be in grayscale and in single precision
@@ -125,10 +125,10 @@ end
 
 %RANSAC TIME!!!
 %vary threshold to see if results are improved!! 100 iterations
-[R_final_12, T_final_12, max_inliers] = ransac(xyz_matches_1, xyz_matches_2);
+[R_final_21, T_final_21, max_inliers] = ransac(xyz_matches_1, xyz_matches_2);
 
-verify = R_final_12'*R_final_12; %if it is identity matrix
-det = det(R_final_12);
+verify = R_final_21'*R_final_21; %if it is identity matrix
+det = det(R_final_21);
 
 % plot inliers and its matches over the two images
 
@@ -144,3 +144,270 @@ v2_m_in = v2_m(:, max_inliers);
 hold on;
 h = line([u1_m_in; u2_m_in],[v1_m_in;v2_m_in]);
 set(h, 'linewidth', 1, 'color', 'b');
+
+% DETECTION OF MOVING OBJECTS BY THE TWO CAMERAS
+
+% Estimate the background and components for camera 1
+
+%compute median of every pixel in terms of time (third dimension in list of matrices)
+bgdepth_1 = median(imgsd_1,3);
+
+%background subtraction for depth (try with gray too)
+hold all
+
+imgdiffiltered_1 = [];
+im_label_1 = zeros(480,640,length(d1));
+num_components_1 = [];
+
+for i=1:length(d1_sorted)
+    
+    imdiff=abs(imgsd_1(:,:,i)-bgdepth_1)>50; 
+    %subtracting the background to the image in order to obtain moving
+    %objects: 1 foreground, 0 background
+    
+    % with each image obtained, we can see that these images have white contours that are actually background 
+    % so we can "clean" these, considering the neighbourhood of each pixel
+    imdiff = imopen(imdiff,strel('disk',8));
+    %ignore objects with less than 1000 pixels
+    imdiff = bwareaopen(imdiff,1000);
+    imgdiffiltered_1= cat(3, imgdiffiltered_1, imdiff);
+    
+    %store for each image: matrix with labels and number of components
+    [im_label_1(:,:,i), num_components_1(i)] = bwlabel(imgdiffiltered_1(:,:,i));
+    
+    %remove outliers in relation to values of z
+    for j = 1 : num_components_1(i)
+         comp_indx = find(im_label_1(:,:,i)==j);         
+         comp_points = (xyz_depth_1(comp_indx,3,i));
+         
+         error_indx = find(comp_points == 0); % get indexes from depth cam errors
+         if length(error_indx) > length(comp_indx)*.5 %if the object is more than 50% erros, delete obj
+             error_indx = 1:length(comp_indx);
+         end
+         
+         avg_point = median(nonzeros(comp_points));
+         other_indx = find(abs(comp_points-avg_point) > 1);
+         other_indx = union(other_indx, error_indx);
+         if other_indx
+             num_removed_1(i,j) = length(other_indx);
+             others_indx = comp_indx(other_indx);
+             filterd_im = reshape(im_label_1(:,:,i), 480*640, 1);
+             filterd_im(others_indx) = 0;
+             filterd_im = reshape(filterd_im, 480,640);
+             im_label_1(:,:,i) = filterd_im;
+         end
+         
+    end
+    
+    im_label_1(:,:,i) = bwareaopen(im_label_1(:,:,i),1000);
+    
+    %store for each image: matrix with labels and number of components
+    [im_label_1(:,:,i), num_components_1(i)] = bwlabel(im_label_1(:,:,i));
+    
+    figure(5);
+    imagesc(im_label_1(:,:,i));
+    title('Connected components for camera 1');
+    %pause(1); 
+end
+
+% Estimate the background for camera 2
+
+%compute median of every pixel in terms of time (third dimension in list of matrices)
+bgdepth_2 = median(imgsd_2,3);
+
+%background subtraction for depth (try with gray too)
+hold all
+
+imgdiffiltered_2 = [];
+im_label_2 = zeros(480,640,length(d1));
+num_components = [];
+
+for i=1:length(d2_sorted)
+    
+    imdiff=abs(imgsd_2(:,:,i)-bgdepth_2)>50; 
+    %subtracting the background to the image in order to obtain moving
+    %objects: 1 foreground, 0 background
+    
+    % with each image obtained, we can see that these images have white contours that are actually background 
+    % so we can "clean" these, considering the neighbourhood of each pixel
+    imdiff = imopen(imdiff,strel('disk',8));
+    %ignore objects with less than 1000 pixels
+    imdiff = bwareaopen(imdiff,1000);
+    imgdiffiltered_2= cat(3, imgdiffiltered_2, imdiff);
+    
+    %store for each image: matrix with labels and number of components
+    [im_label_2(:,:,i), num_components_2(i)] = bwlabel(imgdiffiltered_2(:,:,i));
+    
+    %remove outliers in relation to values of z
+    for j = 1 : num_components_2(i)
+         comp_indx = find(im_label_2(:,:,i)==j);         
+         comp_points = (xyz_depth_2(comp_indx,3,i));
+         
+         error_indx = find(comp_points == 0); % get indexes from depth cam errors
+         if length(error_indx) > length(comp_indx)*.5 %if the object is more than 50% erros, delete obj
+             error_indx = 1:length(comp_indx);
+         end
+         
+         avg_point = median(nonzeros(comp_points));
+         other_indx = find(abs(comp_points-avg_point) > 1);
+         other_indx = union(other_indx, error_indx);
+         if other_indx
+             others_indx = comp_indx(other_indx);
+             filterd_im = reshape(im_label_2(:,:,i), 480*640, 1);
+             filterd_im(others_indx) = 0;
+             filterd_im = reshape(filterd_im, 480,640);
+             im_label_2(:,:,i) = filterd_im;
+         end
+         
+    end
+    
+    im_label_2(:,:,i) = bwareaopen(im_label_2(:,:,i),1000);
+    
+    %store for each image: matrix with labels and number of components
+    [im_label_2(:,:,i), num_components_2(i)] = bwlabel(im_label_2(:,:,i));
+    
+    figure(1);
+    imagesc(im_label_2(:,:,i));
+    title('Connected components for camera 2');
+    %pause(1);
+end
+
+% check components that match for the two cameras
+
+% each box is composed by 8 points, each with (x,y,z)
+
+box_1 = zeros(24,max(num_components_1),length(d1_sorted));
+box_2 = zeros(24,max(num_components_2),length(d2_sorted));
+% we want the box 2 expressed in camera 1 reference frame
+
+for i =  1 : length(d1_sorted)   
+    for j = 1 : num_components_1(i)
+       index = find(im_label_1(:,:,i)==j);
+       M = [min(xyz_depth_1(index,1,i)),min(xyz_depth_1(index,2,i)),min(xyz_depth_1(index,3,i)), max(xyz_depth_1(index,1,i)), max(xyz_depth_1(index,2,i)), max(xyz_depth_1(index,3,i))];
+       box_1(:,j,i) = [M(1), M(2), M(3), M(1), M(2), M(6)... 
+                      M(1), M(5), M(6), M(1), M(5), M(3)...
+                      M(4), M(2), M(3), M(4), M(2), M(6)...
+                      M(4), M(5), M(6), M(4), M(5), M(3)];
+    end
+end
+
+% express xyz coordinates of camera 2 in camera 1 reference frame
+
+xyz_2_1 = zeros(480*640,3,length(d2_sorted));
+
+for i =  1 : length(d2_sorted)  
+    
+    xyz_2_1(:,:,i) = (R_final_21 * xyz_depth_2(:,:,i)' + repmat(T_final_21,1,480*640))';
+    
+    for j = 1 : num_components_2(i)
+       index = find(im_label_2(:,:,i)==j);
+       M = [min(xyz_2_1(index,1,i)),min(xyz_2_1(index,2,i)),min(xyz_2_1(index,3,i)), max(xyz_2_1(index,1,i)), max(xyz_2_1(index,2,i)), max(xyz_2_1(index,3,i))];
+       box_2(:,j,i) = [M(1), M(2), M(3), M(1), M(2), M(6)... 
+                      M(1), M(5), M(6), M(1), M(5), M(3)...
+                      M(4), M(2), M(3), M(4), M(2), M(6)...
+                      M(4), M(5), M(6), M(4), M(5), M(3)];
+    end
+end
+
+% determine correspondent components of images between two cameras and
+% recompute boxes for common components
+assigns = [];
+box_common = cat(2, box_1, zeros(24, max(num_components_2), length(d2_sorted)));
+num_components_t = num_components_1;
+
+for i = 1 : length(d1_sorted)
+    
+    % to compare all combinations of components from one image with the
+    % ones from the second image
+    box_i2 = reshape(nonzeros(box_2(:,:,i)), 3*8, num_components_2(i)); %nonzeros eliminate zeros -> no component
+    box_i1 = reshape(nonzeros(box_1(:,:,i)), 3*8, num_components_1(i));
+    box_i1 = reshape(box_i1, 24*num_components_1(i),1);
+    
+    % compute norm of difference between the two images, for box (24
+    % values) and for colour (30 values)
+    difBox = repmat(box_i2,num_components_1(i),1) - repmat(box_i1,1,num_components_2(i));
+    normBox = sqrt(sum((reshape(difBox, 24, num_components_1(i)*num_components_2(i))).^2, 1));
+    %normBox = vecnorm(reshape(difBox, 24, num_components_1(i)*num_components_2(i)));  
+    
+    % cost matrix, of proximity values between centroids of all components
+    % of the two images
+    costmat = reshape(normBox, num_components_1(i), num_components_2(i));
+    
+    [assign, cost] = munkres(costmat); % hungarian method to determine the assignment
+    
+    box_i1 = reshape(box_i1, 3*8, num_components_1(i));
+    
+    for k = 1 : length(assign)
+        assigns(k,i) = assign(k);
+        if assigns(k,i) ~= 0
+            x_min = min(box_i1(1,k), box_i2(1,assign(k)));
+            y_min = min(box_i1(2,k), box_i2(2,assign(k)));
+            z_min = min(box_i1(3,k), box_i2(3,assign(k)));
+            x_max = max(box_i1(19,k), box_i2(19,assign(k)));
+            y_max = max(box_i1(20,k), box_i2(20,assign(k)));
+            z_max = max(box_i1(21,k), box_i2(21,assign(k)));
+            M = [x_min,y_min,z_min,x_max,y_max,z_max];
+            box_common(:,k,i) = [M(1), M(2), M(3), M(1), M(2), M(6)... 
+                      M(1), M(5), M(6), M(1), M(5), M(3)...
+                      M(4), M(2), M(3), M(4), M(2), M(6)...
+                      M(4), M(5), M(6), M(4), M(5), M(3)];
+        end
+        
+    end 
+    
+    if length(assign) < num_components_2(i)
+            % components that did not match with the ones of image from
+            % camera 1
+            new = setdiff(1:num_components_2(i),assign);
+            box_common(:,new + max(num_components_1),i) = box_2(:,new,i);
+            num_components_t(i) = num_components_t(i) + length(new);
+            % to have the total number of components to do tracking
+    end
+    
+end
+
+% Tracking through time, considering the information of the two cameras
+% together
+
+%to store sequence of components along the images, with components of slice of image as a starting point
+track(:,1) = 1:num_components_t(1);
+
+%compare components of image pair by pair -> total of length(d)-1 pairs
+for i = 1 : length(d1_sorted)-1
+    j = i + 1;
+    
+    % to compare all combinations of components from one image with the
+    % ones from the second image
+    box_j = reshape(nonzeros(box_common(:,:,j)), 3*8, num_components_t(j)); %nonzeros eliminate zeros -> no component
+    box_i = reshape(nonzeros(box_common(:,:,i)), 3*8, num_components_t(i));
+    box_i = reshape(box_i, 24*num_components_t(i),1);
+    
+    % compute norm of difference between the two images, for box (24
+    % values) and for colour (30 values)
+    difBox = repmat(box_j,num_components_t(i),1) - repmat(box_i,1,num_components_t(j));
+    normBox = sqrt(sum((reshape(difBox, 24, num_components_t(i)*num_components_t(j))).^2, 1));
+    %normBox = vecnorm(reshape(difBox, 24, num_components_t(i)*num_components_t(j)));  
+    
+    % cost matrix, of proximity values between centroids of all components
+    % of the two images
+    costmat = reshape(normBox, num_components_t(i), num_components_t(j));
+    
+    [assign, cost] = munkres(costmat); % hungarian method to determine the assignment
+
+    
+    if ~isempty(assign)
+        for index = 1 : length(assign)
+            indextrack = find(track(:,i)==index);
+            track(indextrack,j) = assign(index);
+        end
+    else
+        track =  cat(2,track,zeros(size(track,1),1));
+    end
+    
+    %verify
+    if length(assign) < num_components_t(j)
+        new = setdiff(1:num_components_t(j),assign);
+        track=cat(1,track,cat(2,zeros(length(new),size(track,2)-1),new'));
+    end
+    
+end       
