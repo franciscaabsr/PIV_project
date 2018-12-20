@@ -70,17 +70,19 @@ im2=imread(imgseq2(1).rgb);
 [f1,d1] = vl_sift(single(rgb2gray(im1))) ; 
 [f2,d2] = vl_sift(single(rgb2gray(im2))) ;
 
-figure(1);
-imagesc(im1);hold on;plot(f1(1,:),f1(2,:),'*');hold off;
-figure(2);
-imagesc(im2);hold on;plot(f2(1,:),f2(2,:),'*');hold off;
+% Visualization of keypoints
+% figure(1);
+% imagesc(im1);hold on;plot(f1(1,:),f1(2,:),'*');hold off;
+% figure(2);
+% imagesc(im2);hold on;plot(f2(1,:),f2(2,:),'*');hold off;
 
 [matches, scores] = vl_ubcmatch(d1, d2, 2);
 
 % matches - index of keypoints (according to f1 and f2) that matched
 
-figure(3); clf;
-imagesc(cat(2,im1,im2));
+% Visualization of matches
+% figure(3); clf;
+% imagesc(cat(2,im1,im2));
 
 % obtain the coordinates (u,v) for the matches in the original pair of rgb
 u1_m = f1(1,matches(1,:));
@@ -88,11 +90,11 @@ v1_m = f1(2,matches(1,:));
 u2_m = f2(1,matches(2,:));
 v2_m = f2(2,matches(2,:));
 
-u2_m_plot = f2(1,matches(2,:))+size(im1,2);
-
-hold on;
-h = line([u1_m; u2_m_plot],[v1_m;v2_m]);
-set(h, 'linewidth', 1, 'color', 'b');
+% u2_m_plot = f2(1,matches(2,:))+size(im1,2);
+% 
+% hold on;
+% h = line([u1_m; u2_m_plot],[v1_m;v2_m]);
+% set(h, 'linewidth', 1, 'color', 'b');
 
 % Find depth_pixel corresponding to these (u,v) from the match in the rgb
 % (u,v) matched -> find (u,v) in rgbd(mapping) -> determine pixel in depth image !
@@ -134,20 +136,19 @@ xyz_matches_2 = xyz_matches_2(:,index_nonzero);
 %verify = R_final_21'*R_final_21;
 %det = det(R_final_21);
 
-% plot inliers and its matches over the two images
+% Plot inliers and its matches over the two images
 
-figure(4); clf;
-imagesc(cat(2,im1,im2));
-
-% to select only the inliers
-u1_m_in = u1_m(:,max_inliers);
-v1_m_in = v1_m(:, max_inliers);
-u2_m_in = u2_m_plot(:, max_inliers);
-v2_m_in = v2_m(:, max_inliers);
-
-hold on;
-h = line([u1_m_in; u2_m_in],[v1_m_in;v2_m_in]);
-set(h, 'linewidth', 1, 'color', 'b');
+% figure(4); clf;
+% imagesc(cat(2,im1,im2));
+%
+% u1_m_in = u1_m(:,max_inliers);
+% v1_m_in = v1_m(:, max_inliers);
+% u2_m_in = u2_m_plot(:, max_inliers);
+% v2_m_in = v2_m(:, max_inliers);
+% 
+% hold on;
+% h = line([u1_m_in; u2_m_in],[v1_m_in;v2_m_in]);
+% set(h, 'linewidth', 1, 'color', 'b');
 
 % DETECTION OF MOVING OBJECTS BY THE TWO CAMERAS
 

@@ -162,15 +162,15 @@ for j = 1 : size(track,1)
 end
 
 % Plot the boxes 
-for j = 1 : size(track,1)
-    for i = 1 : length(objects(j).framestracked)
-        frame = objects(j).framestracked(i);
-        figure(2)
-        pcshow(xyz_depth(:,:,frame),'VerticalAxis','Z');
-        hold on 
-        plot3(objects(j).X(i,:)' , objects(j).Y(i,:)' , objects(j).Z(i,:)' , 'r*');
-        axis([min(xyz_depth(:,1,frame)) max(xyz_depth(:,1,frame)) min(xyz_depth(:,2,frame)) max(xyz_depth(:,2,frame)) min(xyz_depth(:,3,frame)) max(xyz_depth(:,3,frame))])
-        hold off
-    end
-end
+% for j = 1 : size(track,1)
+%     for i = 1 : length(objects(j).framestracked)
+%         frame = objects(j).framestracked(i);
+%         figure(1)
+%         pcshow(xyz_depth(:,:,frame),'VerticalAxis','Z');
+%         hold on 
+%         plot3(objects(j).X(i,:)' , objects(j).Y(i,:)' , objects(j).Z(i,:)' , 'r*');
+%         axis([min(xyz_depth(:,1,frame)) max(xyz_depth(:,1,frame)) min(xyz_depth(:,2,frame)) max(xyz_depth(:,2,frame)) min(xyz_depth(:,3,frame)) max(xyz_depth(:,3,frame))])
+%         hold off
+%     end
+% end
 end
