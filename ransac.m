@@ -3,7 +3,7 @@ function [R_final, T_final, max_inliers] = ransac(xyz1, xyz2)
 max_inliers = [];
 
     for i=1:100
-        %select 4 pairs of values of the 200 we have
+        %select 4 pairs of values of the number of matches we have
         index_sample = randsample((1:size(xyz1,2)), 4);
 
         %compute centroid for 4 pairs
@@ -21,7 +21,7 @@ max_inliers = [];
 
         %find inliers and outliers
         error = (xyz1 - (R_21*xyz2 + repmat(T_21,1,size(xyz2,2))));
-        inliers = sum(error.*error)<(0.5^2) ; %1 corresponds to inlier and 0 corresponds to outlier
+        inliers = sum(error.*error)<(0.3^2) ; %1 corresponds to inlier and 0 corresponds to outlier
         if sum(inliers) > size(max_inliers)
             max_inliers = find(inliers);
         end
