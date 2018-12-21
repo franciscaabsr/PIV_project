@@ -19,9 +19,9 @@ if isempty(im_size)
     %     im_size = size(im);
     im_size = im_orig_size;
     
-    u = repmat(1:im_size(2),im_size(1),1); %1 to 640 vector for all 480 rows - vector 1-640 480 times 
-    u = u(:)-Cx; %subtract for each entry of matrix; u is in the principal point ref frame
-    v = repmat((1:im_size(1))',im_size(2),1); %vector 1 to 480 vector' for all 640 rows
+    u = repmat(1:im_size(2),im_size(1),1); 
+    u = u(:)-Cx;
+    v = repmat((1:im_size(1))',im_size(2),1);
     v=v(:)-Cy; 
     xyz=zeros(length(u),3); 
 end

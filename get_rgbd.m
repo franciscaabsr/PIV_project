@@ -37,8 +37,5 @@ rgbd((1:n_pixels)',:) = rgb_aux(rgb_inds,:);
 rgbd(xyz(:,1) == 0 & xyz(:,2) == 0 & xyz(:,3) == 0,:) = 0;
 
 rgbd=uint8(reshape(rgbd,rgb_size));
-% pixel of depth -> in each entry we have (u,v) of RGB corresponding to
-% that pixel in depth
-
 
 end
