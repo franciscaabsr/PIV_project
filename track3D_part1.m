@@ -2,124 +2,160 @@ function objects = track3D_part1(imgseq1, cam_params)
 %clear all
 %close all 
 
-% Prepare parameters and access to functions
-
+%prepare parameters and access to functions
 addpath('hungarian_method/');
 
-%imgs = []; NAO PRECISAMOS DISTO
 imgsd = zeros(480,640,length(imgseq1));
 xyz_depth = zeros(480*640,3,length(imgseq1));
 rgbd = zeros(480,640,3*length(imgseq1));
 
-% Computation of rgbd and xyz (rgbd: rgb image expressed in depth reference frame)
-
+%for each image frame in the directory
+%express rgb image in the depth camera reference frame 
 for i = 1: length (imgseq1)
-    im = imread(imgseq1(i).rgb);
-    %imgs = cat(3,imgs,im); 
+    
+    %load rgb image and corresponding depth image 
+    im = imread(imgseq1(i).rgb);    
     load(imgseq1(i).depth);
-    imgsd(:,:,i) = double(depth_array); % depth_array in mm
-    % select (i,j) that correspond to entries non zero
+    
+    %matrix containing the depth (in millimiters) of each pixel
+    imgsd(:,:,i) = double(depth_array);
+    
+    %find coordinates of pixels with non-zero values 
     [r,c] = ind2sub(size(imgsd(:,:,i)),find(imgsd(:,:,i))); 
     im_vec = reshape(imgsd(:,:,i),[480*640,1]);
-    % compute xyz in depth reference frame
+    
+    %compute the xyz pointCloud for the depth camera 
     xyz_depth(:,:,i) = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0);
-    % compute rgb corresponding to xyz_depth
+    
+    %express rgb values in the depth camera reference frame 
     [rgbd(:,:,i:i+2), u_temp, v_temp, xyz_rgb_temp] = get_rgbd(xyz_depth(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb);
+
 end
 
-% Background subtraction and identification of components
+%perform background subtraction and identify image components
 [im_label, num_components] = bg_subtraction(length(imgseq1), imgsd);
 
 colour = zeros(15*2,max(num_components),length(imgseq1));
-% each box is composed by 8 points, each with (x,y,z)
 box = zeros(3*8,max(num_components),length(imgseq1));
 
 for i =  1 : length(imgseq1)
-    [hue, sat, int] = rgb2hsv(rgbd(:,:,i:i+2)); % with RBGD????
+    
+    %obtain hue and saturation from the rgb image
+    [hue, sat, int] = rgb2hsv(rgbd(:,:,i:i+2)); 
     hue = reshape(hue, 480*640,1);
     sat = reshape(sat, 480*640,1);
     hold all
     
+    %for each component of each image frame 
+    %compute hue and saturation histograms
+    %and compute a 3D box 
     for j = 1 : num_components(i)
+        
        indx = find(im_label(:,:,i)==j);
+       
+       %for the current component, find maximum and minimum x, y and z values
        M = [min(xyz_depth(indx,1,i)),min(xyz_depth(indx,2,i)),min(xyz_depth(indx,3,i)), max(xyz_depth(indx,1,i)), max(xyz_depth(indx,2,i)), max(xyz_depth(indx,3,i))];
+       
+       %compute box containing the current component
        box(:,j,i) = [M(1), M(2), M(3), M(1), M(2), M(6)... 
                       M(1), M(5), M(6), M(1), M(5), M(3)...
                       M(4), M(2), M(3), M(4), M(2), M(6)...
                       M(4), M(5), M(6), M(4), M(5), M(3)];
        
-       %signiture for pattern in terms of colour
+       %compute hue and saturation histograms for the current component 
        histHue = histogram(hue(indx),15); histSat = histogram(sat(indx),15);
+       
+       %obtain a colour descriptor for the current component 
        colour(:,j,i) = cat(2,histHue.Values,histSat.Values)';
        
+       %remove zero values from the colour descriptors 
+       %to adjust the descriptors to the tracking algorithm 
        if isempty(find(colour(:,j,i)==0)) == 0
         colour(find(colour(:,j,i)==0),j,i)=-1;
        end
+       
     end
     
 end
 
-% Tracking of "objects" identified with background subtraction
 
-% to store sequence of components along the images, with components of first
-% image as a starting point
-
+%store sequence of components along the images,
+%using components of the first image as a starting point
 track(:,1) = 1:num_components(1);
 
-% compare components of image pair by pair
-
+%compare components of consecutive frames
 for i = 1 : length(imgseq1)-1
-    j = i + 1;
-    assign = [];
-    % to compare all combinations of components from the images i and i+1 
-    box_j = reshape(nonzeros(box(:,:,j)), 3*8, num_components(j)); % nonzeros eliminate zeros -> no component
-    box_i = reshape(nonzeros(box(:,:,i)), 3*8, num_components(i));
-    box_i = reshape(box_i, 24*num_components(i),1);
     
+    j = i + 1; 
+    assign = [];
+    
+    %remove zero values from the box matrices, which correspond
+    %to components that don't exist in the current frame
+    box_j = reshape(nonzeros(box(:,:,j)), 3*8, num_components(j)); 
+    box_i = reshape(nonzeros(box(:,:,i)), 3*8, num_components(i));
+    
+    %normalize box descriptors for cost function 
+    box_i_norm = box_i./sqrt(sum(box_i.^2));
+    box_j_norm = box_j./sqrt(sum(box_j.^2));
+    
+    box_i = reshape(box_i, 24*num_components(i),1);
+    box_i_norm = reshape(box_i_norm, 24*num_components(i),1);
+    
+    %remove zero values from the colour matrices, which correspond
+    %to components that don't exist in the current frame 
     colour_j = reshape(nonzeros(colour(:,:,j)), 30, num_components(j));
     colour_i = reshape(nonzeros(colour(:,:,i)), 30, num_components(i));
+     
+    %normalize colour descriptors for cost function 
+    colour_i_norm = colour_i./sqrt(sum(colour_i.^2));
+    colour_j_norm = colour_j./sqrt(sum(colour_j.^2));
+    
     colour_i = reshape(colour_i, 30*num_components(i),1);
+    colour_i_norm = reshape(colour_i_norm, 30*num_components(i),1);
     
     if ~isempty(box_j) && ~isempty(box_i)
-        % compute norm of difference between the two images, for box (24
-        % values) and for colour (30 values)
-        difBox = repmat(box_j,num_components(i),1) - repmat(box_i,1,num_components(j));
+           
+        %compute euclidean distance between the normalized box descriptors 
+        %of all pairs of components from frame i and frame i+1
+        difBox = repmat(box_j_norm,num_components(i),1) - repmat(box_i_norm,1,num_components(j));
         normBox = sqrt(sum((reshape(difBox, 24, num_components(i)*num_components(j))).^2, 1));
-        %normBox = vecnorm(reshape(difBox, 24, num_components(i)*num_components(j)));
+        
+        %compute euclidean distance between the normalized colour 
+        %descriptors of all pairs of components from frame i and frame i+1
+        difColour = repmat(colour_j_norm,num_components(i),1) - repmat(colour_i_norm,1,num_components(j));
+        normColour = sqrt(sum((reshape(difColour, 30, num_components(i)*num_components(j))).^2,1));  
 
-        difColour = repmat(colour_j,num_components(i),1) - repmat(colour_i,1,num_components(j));
-        normColour = sqrt(sum((reshape(difColour, 30, num_components(i)*num_components(j))).^2,1));
-        %normColour = vecnorm(reshape(difColour, 30, num_components(i)*num_components(j)));   
-
-        % cost matrix (using proximity and colour)
+        %compute cost matrix (using box proximity and colour)
         costmat = reshape(normBox, num_components(i), num_components(j));
         costmat = costmat + reshape(normColour,num_components(i), num_components(j));
         
-        % if cost too high -> not to be chosen by Hungarian Method
-        ind = find(costmat > 1e+06); %VERIFY THRESHOLD
-        costmat(ind) = 1e+10; 
+        %prevent that the Hungarian method chooses
+        %matches with very high cost 
+        costmat(find(costmat > 100))=1e+10;
         
-        % check if entire row or column have absurd values - if so, must be
-        % removed because the assign won't be valid
-        index_c = find(all(costmat > 1e+9, 1));
+        %remove rows in which all the costs are too high 
         index_r = find(all(costmat > 1e+9, 2));
-        costmat(:, index_c) = [];
         costmat(index_r, :) = [];
         
-        % Hungarian Method to determine the assignment
+        %remove columns in which all the costs are too high 
+        index_c = find(all(costmat > 1e+9, 1));
+        costmat(:, index_c) = [];
+        
+        %implement Hungarian Method to determine the assignment
         [assign, cost] = munkres(costmat);
         
-        % correct assign array, if not empty, considering removed rows and columns
+        %correct non-empty assign arrays for the removed rows and columns
         if ~isempty(assign)
-            % correct assign index considering rows removed
+            
+            %correct assign index for the removed rows
             if ~isempty(index_r)
-                aux = zeros(1, num_components(i));
-                aux(1, index_r) = 1;
+                aux = ones(1, num_components(i));
+                aux(1, index_r) = 0;
                 aux(logical(aux)) = assign;
                 assign = aux;
             end
 
-            % correct assign values considering columns removed
+            %correct assign values for the removed columns
             aux = zeros(1, num_components(i));
             for k = 1:length(index_c)
                 ind = find(assign >= index_c(k));
@@ -128,24 +164,37 @@ for i = 1 : length(imgseq1)-1
             end
         end
 
+        %put the assignments into the tracking matrix 
         for index = 1 : length(assign)
+            
             %track only for assign non zero
             if assign(index) ~= 0
                 indextrack = find(track(:,i)==index);
                 track(indextrack,j) = assign(index);
             end
+            
         end
+        
     else
+        
+        %add a column of zeros to the track matrix if
+        %there are no assigns for the current frame 
         track =  cat(2,track,zeros(size(track,1),1));
+        
     end
     
     if length(assign) < num_components(j)
+        
+        %add a new object to the track matrix if number
+        %of components of the current frame is greater
+        %than number of components of the previous frame 
         new = setdiff(1:num_components(j),assign);
         track=cat(1,track,cat(2,zeros(length(new),size(track,2)-1),new'));
+        
     end
 end
 
-% Prepare output
+%prepare output
 for j = 1 : size(track,1)
     objects(j).framestracked=[];
     objects(j).X=[];

@@ -1,24 +1,27 @@
-% Prepare parameters and access to functions
+%prepare parameters and access to functions
 clear all
 close all
 
 load ('./CalibData/cameraparametersAsus.mat');
 addpath('natsortfiles/');
 
-% Insert data in array of structures
+%insert data in array of structures
 
-r1 = dir ('./rgb_image1_*'); %lists the files in directory .png (all the images)
-d1 = dir('./depth1_*'); %lists the files in directory .mat (all the depth images)
-r2 =  dir ('./rgb_image2_*'); %lists the files in directory .png (all the images)
-d2 = dir('./depth2_*'); %lists the files in directory .mat (all the depth images)
+%lists the files in directory .png (all the images)
+r1 = dir ('./rgb_image1_*'); 
+r2 =  dir ('./rgb_image2_*');
 
-% Sort in alphanumeric order
+%lists the files in directory .mat (all the depth images)
+d1 = dir('./depth1_*');
+d2 = dir('./depth2_*');
+
+%sort in alphanumeric order
 r1_sorted = natsortfiles({r1.name})';
 d1_sorted = natsortfiles({d1.name})';
 r2_sorted = natsortfiles({r2.name})';
 d2_sorted = natsortfiles({d2.name})';
 
-% Add everyhting to the imgseq arrays for both cameras
+%add everything to the imgseq arrays for both cameras
 for i=1:length(r1)
     imgseq1(i).rgb= char(r1_sorted(i));
     imgseq2(i).rgb= char(r2_sorted(i));
