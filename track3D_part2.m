@@ -6,10 +6,9 @@ function [objects, cam2toW] = track3D_part2(imgseq1, imgseq2, cam_params)
 run('VLFEATROOT/toolbox/vl_setup');
 addpath('hungarian_method/');
 
-
 imgsd_1 = zeros(480,640,length(imgseq1));
 xyz_depth_1 = zeros(480*640,3,length(imgseq1));
-rgbd_1 = zeros(480,640,3,length(imgseq1));
+rgbd_1 = zeros(480,640,3*length(imgseq1));
 
 %for each image frame of kinect_1 in the directory
 %express rgb image in the depth camera reference frame 
@@ -31,9 +30,7 @@ for i = 1: length(imgseq1)
     xyz_depth_1(:,:,i) = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0); 
     
     %express rgb values in the depth camera reference frame 
-    [rgb_d,u1_temp, v1_temp, xyz_rgb_1_temp] = get_rgbd(xyz_depth_1(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb);
-    
-    rgbd_1(:,:,:,i) = rgb_d;
+    [rgbd_1(:,:,i:i+2),u1_temp, v1_temp, xyz_rgb_1_temp] = get_rgbd(xyz_depth_1(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb);
     
     %save the mapping of rgb image to the depth reference frame
     %only for the first image frame (used to perform the matching)
@@ -41,17 +38,15 @@ for i = 1: length(imgseq1)
         
         u1 = u1_temp;
         v1 = v1_temp;
+        %xyz_rgb_1 = xyz_rgb_1_temp;
         
     end
     
 end
 
-%convert to uint8
-rgbd_1 = uint8(rgbd_1);
-
 imgsd_2 = zeros(480,640,length(imgseq2));
 xyz_depth_2 = zeros(480*640,3,length(imgseq2));
-rgbd_2 = zeros(480,640,3,length(imgseq2));
+rgbd_2 = zeros(480,640,3*length(imgseq2));
 
 %for each image frame of kinect_2 in the directory
 %express rgb image in the depth camera reference frame 
@@ -73,9 +68,7 @@ for i = 1: length(imgseq2)
     xyz_depth_2(:,:,i) = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0);
     
     %express rgb values in the depth camera reference frame
-    [rgb_d,u2_temp,v2_temp,xyz_rgb_2_temp] = get_rgbd(xyz_depth_2(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb); 
-    
-    rgbd_2(:,:,:,i) = rgb_d;
+    [rgbd_2(:,:,i:i+2),u2_temp,v2_temp,xyz_rgb_2_temp] = get_rgbd(xyz_depth_2(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb); 
     
     %save the mapping of rgb image to the depth reference frame
     %only for the first image frame (used to perform the matching)
@@ -83,13 +76,11 @@ for i = 1: length(imgseq2)
         
         u2 = u2_temp;
         v2 = v2_temp;
+        %xyz_rgb_2 = xyz_rgb_2_temp;
         
     end
     
 end
-
-%convert to uint8
-rgbd_2 = uint8(rgbd_2);
 
 %use only the first image frame to compute
 %the transformation between the two kinects
@@ -445,7 +436,7 @@ end
 
 %prepare output
 for j = 1 : size(track,1)
-    objects(j).framestracked=[];
+    objects(j).frames_tracked=[];
     objects(j).X=[];
     objects(j).Y=[];
     objects(j).Z=[];
@@ -456,7 +447,7 @@ for j = 1 : size(track,1)
             objects(j).X = cat(1, objects(j).X, box_common(1:3:end-2,box_col,i)');
             objects(j).Y = cat(1, objects(j).Y, box_common(2:3:end-1,box_col,i)');
             objects(j).Z = cat(1, objects(j).Z, box_common(3:3:end,box_col,i)');
-            objects(j).framestracked = cat(2, objects(j).framestracked,i);
+            objects(j).frames_tracked = cat(2, objects(j).frames_tracked,i);
         end
     end
 end
@@ -464,34 +455,34 @@ end
 cam2toW.R = R_final_21;
 cam2toW.T = T_final_21;
 
-j= 1;
-for i = 1:3:3*length(imgseq1)
-    pc1=pointCloud(xyz_depth_1(:,:,j),'Color',reshape(rgbd_1(:,:,i:i+2),[480*640 3]));
-    pc2=pointCloud(xyz_2_1(:,:,j),'Color',reshape(rgbd_2(:,:,i:i+2),[480*640 3]));
-    figure(1);hold off;
-    %showPointCloud(pc1)
-    pcshow(pcmerge(pc1,pc2,0.001));
-    drawnow;
-    j = j+1;
-end
+% j= 1;
+% for i = 1:3:3*length(imgseq1)
+%     pc1=pointCloud(xyz_depth_1(:,:,j),'Color',reshape(rgbd_1(:,:,i:i+2),[480*640 3]));
+%     pc2=pointCloud(xyz_2_1(:,:,j),'Color',reshape(rgbd_2(:,:,i:i+2),[480*640 3]));
+%     figure(1);hold off;
+%     %showPointCloud(pc1)
+%     pcshow(pcmerge(pc1,pc2,0.001));
+%     drawnow;
+%     j = j+1;
+% end
 
-for i=1:length(imgseq1)
-    im1=imread(imgseq1(i).rgb);
-    im2=imread(imgseq2(i).rgb);
-    load(imgseq1(i).depth)
-    dep1=depth_array;
-    load(imgseq2(i).depth)
-    dep2=depth_array;
-    xyz1=get_xyz_asus(dep1(:),[480 640],(1:640*480)', cam_params.Kdepth,1,0);
-    xyz2=get_xyz_asus(dep2(:),[480 640],(1:640*480)', cam_params.Kdepth,1,0);
-    [rgbd1,u,v,xyz_rgb1] = get_rgbd(xyz1, im1, cam_params.R, cam_params.T, cam_params.Krgb);
-    [rgbd2,u,v,xyz_rgb2] = get_rgbd(xyz2, im2, cam_params.R, cam_params.T, cam_params.Krgb);
-    pc1=pointCloud(xyz1,'Color',reshape(rgbd1,[480*640 3]));
-    pc2=pointCloud(xyz2*cam2toW.R+cam2toW.T,'Color',reshape(rgbd2,[480*640 3]));
-    figure(1);hold off;
-    %showPointCloud(pc1)
-    pcshow(pcmerge(pc1,pc2,0.001));
-    drawnow;
-end
+% for i=1:length(imgseq1)
+%     im1=imread(imgseq1(i).rgb);
+%     im2=imread(imgseq2(i).rgb);
+%     load(imgseq1(i).depth)
+%     dep1=depth_array;
+%     load(imgseq2(i).depth)
+%     dep2=depth_array;
+%     xyz1=get_xyz_asus(dep1(:),[480 640],(1:640*480)', cam_params.Kdepth,1,0);
+%     xyz2=get_xyz_asus(dep2(:),[480 640],(1:640*480)', cam_params.Kdepth,1,0);
+%     [rgbd1,u,v,xyz_rgb1] = get_rgbd(xyz1, im1, cam_params.R, cam_params.T, cam_params.Krgb);
+%     [rgbd2,u,v,xyz_rgb2] = get_rgbd(xyz2, im2, cam_params.R, cam_params.T, cam_params.Krgb);
+%     pc1=pointCloud(xyz1,'Color',reshape(rgbd1,[480*640 3]));
+%     pc2=pointCloud(xyz2*cam2toW.R+cam2toW.T,'Color',reshape(rgbd2,[480*640 3]));
+%     figure(1);hold off;
+%     %showPointCloud(pc1)
+%     pcshow(pcmerge(pc1,pc2,0.001));
+%     drawnow;
+% end
 
 end

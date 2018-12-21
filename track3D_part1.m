@@ -7,7 +7,7 @@ addpath('hungarian_method/');
 
 imgsd = zeros(480,640,length(imgseq1));
 xyz_depth = zeros(480*640,3,length(imgseq1));
-rgbd = zeros(480,640,3,length(imgseq1));
+rgbd = zeros(480,640,3*length(imgseq1));
 
 %for each image frame in the directory
 %express rgb image in the depth camera reference frame 
@@ -28,13 +28,9 @@ for i = 1: length (imgseq1)
     xyz_depth(:,:,i) = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0);
     
     %express rgb values in the depth camera reference frame 
-    [rgb_d, u_temp, v_temp, xyz_rgb_temp] = get_rgbd(xyz_depth(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb);
-    
-    rgbd(:,:,:,i) = rgb_d;
-end
+    [rgbd(:,:,i:i+2), u_temp, v_temp, xyz_rgb_temp] = get_rgbd(xyz_depth(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb);
 
-%convert to uint8
-rgbd = uint8(rgbd);
+end
 
 %perform background subtraction and identify image components
 [im_label, num_components] = bg_subtraction(length(imgseq1), imgsd);
@@ -200,7 +196,7 @@ end
 
 %prepare output
 for j = 1 : size(track,1)
-    objects(j).framestracked=[];
+    objects(j).frames_tracked=[];
     objects(j).X=[];
     objects(j).Y=[];
     objects(j).Z=[];
@@ -209,7 +205,7 @@ for j = 1 : size(track,1)
             objects(j).X = cat(1, objects(j).X, box(1:3:end-2,track(j,i),i)');
             objects(j).Y = cat(1, objects(j).Y, box(2:3:end-1,track(j,i),i)');
             objects(j).Z = cat(1, objects(j).Z, box(3:3:end,track(j,i),i)');
-            objects(j).framestracked = cat(2, objects(j).framestracked,i);
+            objects(j).frames_tracked = cat(2, objects(j).frames_tracked,i);
         end
     end
 end
