@@ -463,54 +463,28 @@ end
 cam2toW.R = R_final_21;
 cam2toW.T = T_final_21;
 
-% for i = 1:length(imgseq1)
+% Plot pointcloud
+% for i=1:length(imgseq1)
 %     pc1=pointCloud(xyz_depth_1(:,:,i),'Color',reshape(rgbd_1(:,:,:,i),[480*640 3]));
 %     pc2=pointCloud(xyz_2_1(:,:,i),'Color',reshape(rgbd_2(:,:,:,i),[480*640 3]));
 %     figure(1);hold off;
-%     showPointCloud(pc1)
-%     pcshow(pcmerge(pc1,pc2,0.001));
+%     %showPointCloud(pc1)
+%     merged_pcs(i).PC = pcmerge(pc1,pc2,0.001);
+%     pcshow(merged_pcs(i).PC);
 %     drawnow;
 % end
-
-for i=1:length(imgseq1)
-    pc1=pointCloud(xyz_depth_1(:,:,i),'Color',reshape(rgbd_1(:,:,:,i),[480*640 3]));
-    pc2=pointCloud(xyz_2_1(:,:,i),'Color',reshape(rgbd_2(:,:,:,i),[480*640 3]));
-    figure(1);hold off;
-    %showPointCloud(pc1)
-    merged_pcs(i).PC = pcmerge(pc1,pc2,0.001);
-    pcshow(merged_pcs(i).PC);
-    drawnow;
-end
 
 % Plot the boxes 
-for j = 1 : size(track,1)
-    for i = 1 : length(objects(j).frames_tracked)
-        frame = objects(j).frames_tracked(i);
-        figure(2)
-        pcshow(merged_pcs(frame).PC);
-        hold on 
-        plot3(objects(j).X(i,:)' , objects(j).Y(i,:)' , objects(j).Z(i,:)' , 'r*');
-        hold off
-    end
-end
-
-% for i=1:length(imgseq1)
-%     im1=imread(imgseq1(i).rgb);
-%     im2=imread(imgseq2(i).rgb);
-%     load(imgseq1(i).depth)
-%     dep1=depth_array;
-%     load(imgseq2(i).depth)
-%     dep2=depth_array;
-%     xyz1=get_xyz_asus(dep1(:),[480 640],(1:640*480)', cam_params.Kdepth,1,0);
-%     xyz2=get_xyz_asus(dep2(:),[480 640],(1:640*480)', cam_params.Kdepth,1,0);
-%     [rgbd1,u,v,xyz_rgb1] = get_rgbd(xyz1, im1, cam_params.R, cam_params.T, cam_params.Krgb);
-%     [rgbd2,u,v,xyz_rgb2] = get_rgbd(xyz2, im2, cam_params.R, cam_params.T, cam_params.Krgb);
-%     pc1=pointCloud(xyz1,'Color',reshape(rgbd1,[480*640 3]));
-%     pc2=pointCloud(xyz2*cam2toW.R+cam2toW.T,'Color',reshape(rgbd2,[480*640 3]));
-%     figure(1);hold off;
-%     %showPointCloud(pc1)
-%     pcshow(pcmerge(pc1,pc2,0.001));
-%     drawnow;
+% for j = 1 : size(track,1)
+%     for i = 1 : length(objects(j).frames_tracked)
+%         frame = objects(j).frames_tracked(i);
+%         figure(2)
+%         pcshow(merged_pcs(frame).PC);
+%         hold on 
+%         plot3(objects(j).X(i,:)' , objects(j).Y(i,:)' , objects(j).Z(i,:)' , 'r*');
+%         hold off
+%     end
 % end
+
 
 end

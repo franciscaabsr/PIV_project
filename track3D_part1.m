@@ -217,8 +217,8 @@ end
 
 % Plot the boxes 
 % for j = 1 : size(track,1)
-%     for i = 1 : length(objects(j).framestracked)
-%         frame = objects(j).framestracked(i);
+%     for i = 1 : length(objects(j).frames_tracked)
+%         frame = objects(j).frames_tracked(i);
 %         figure(1)
 %         pcshow(xyz_depth(:,:,frame),'VerticalAxis','Z');
 %         hold on 
@@ -227,4 +227,6 @@ end
 %         hold off
 %     end
 % end
+
+
 end
