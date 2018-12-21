@@ -7,7 +7,7 @@ addpath('hungarian_method/');
 
 imgsd = zeros(480,640,length(imgseq1));
 xyz_depth = zeros(480*640,3,length(imgseq1));
-rgbd = zeros(480,640,3*length(imgseq1));
+rgbd = zeros(480,640,3,length(imgseq1));
 
 %for each image frame in the directory
 %express rgb image in the depth camera reference frame 
@@ -28,9 +28,14 @@ for i = 1: length (imgseq1)
     xyz_depth(:,:,i) = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0);
     
     %express rgb values in the depth camera reference frame 
-    [rgbd(:,:,i:i+2), u_temp, v_temp, xyz_rgb_temp] = get_rgbd(xyz_depth(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb);
+    [rgb_d, u_temp, v_temp, xyz_rgb_temp] = get_rgbd(xyz_depth(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb);
 
+    %store all rgbd
+    rgbd(:,:,:,i) = rgb_d;
 end
+
+%conversion to correct units for rgbd images
+rgbd = uint8(rgbd);
 
 %perform background subtraction and identify image components
 [im_label, num_components] = bg_subtraction(length(imgseq1), imgsd);
@@ -41,7 +46,7 @@ box = zeros(3*8,max(num_components),length(imgseq1));
 for i =  1 : length(imgseq1)
     
     %obtain hue and saturation from the rgb image
-    [hue, sat, int] = rgb2hsv(rgbd(:,:,i:i+2)); 
+    [hue, sat, int] = rgb2hsv(rgbd(:,:,:,1)); 
     hue = reshape(hue, 480*640,1);
     sat = reshape(sat, 480*640,1);
     hold all
