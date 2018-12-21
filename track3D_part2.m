@@ -30,7 +30,7 @@ for i = 1: length(imgseq1)
     xyz_depth_1(:,:,i) = get_xyz_asus(im_vec, [480, 640], [r, c], cam_params.Kdepth, 1, 0); 
     
     %express rgb values in the depth camera reference frame 
-    [rgb_d,u1_temp, v1_temp, xyz_rgb_1_temp] = get_rgbd(xyz_depth_1(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb);
+    [rgb_d,u1_temp,v1_temp] = get_rgbd(xyz_depth_1(:,:,i), im, cam_params.R, cam_params.T, cam_params.Krgb);
     
     %store all rgbd
     rgbd_1(:,:,:,i) = rgb_d;

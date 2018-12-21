@@ -1,4 +1,4 @@
-function [rgbd,u,v,xyz_rgb] = get_rgbd(xyz, rgb, R, T, Krgb)
+function [rgbd,u,v] = get_rgbd(xyz, rgb, R, T, Krgb)
 
 %intrinsic parameters
 Kx = Krgb(1,1);
